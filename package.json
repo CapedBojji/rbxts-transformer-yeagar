@@ -13,6 +13,10 @@
     "rbxts",
     "roblox-ts"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CapedBojji/rbxts-transformer-yeagar.git"
+  },
   "author": "CapedBojji",
   "license": "MIT",
   "devDependencies": {
