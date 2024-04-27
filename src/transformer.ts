@@ -87,7 +87,7 @@ function visitCallExpression(context: TransformContext, node: ts.CallExpression)
     expression.expression.getText() === "Yeagar" &&
     expression.name.getText() === "addPath"
   ) {
-    const p = node.arguments[0].getText();
+    const p = (node.arguments[0] as ts.StringLiteral).text
     // Replace src with out
     const updatedPath = p.replace("src", "out");
     const path = rojoResolver.getRbxPathFromFilePath(
