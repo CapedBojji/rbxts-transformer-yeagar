@@ -80,19 +80,20 @@ function setupRojo() {
   return RojoResolver.fromPath(rojoConfig);
 }
 
-function visitCallExpression(context: TransformContext, node: ts.CallExpression) {
+function visitCallExpression(
+  context: TransformContext,
+  node: ts.CallExpression
+) {
   const expression = node.expression;
   if (
     ts.isPropertyAccessExpression(expression) &&
     expression.expression.getText() === "Yeagar" &&
     expression.name.getText() === "addPath"
   ) {
-    const p = (node.arguments[0] as ts.StringLiteral).text
+    const p = (node.arguments[0] as ts.StringLiteral).text;
     // Replace src with out
     const updatedPath = p.replace("src", "out");
-    const path = rojoResolver.getRbxPathFromFilePath(
-      updatedPath
-    );
+    const path = rojoResolver.getRbxPathFromFilePath(updatedPath);
     const updatedExpression = ts.factory.createPropertyAccessExpression(
       ts.factory.createIdentifier("Yeagar"),
       ts.factory.createIdentifier("_addPath")
@@ -115,7 +116,7 @@ function visitCallExpression(context: TransformContext, node: ts.CallExpression)
  * This is the transformer's configuration, the values are passed from the tsconfig.
  */
 export interface TransformerConfig {
-	_: void;
+  _: void;
 }
 
 /**
@@ -124,42 +125,56 @@ export interface TransformerConfig {
  * You can also use this object to store state, e.g prereqs.
  */
 export class TransformContext {
-	public factory: ts.NodeFactory;
+  public factory: ts.NodeFactory;
+  public yeagarName: string | undefined = undefined;
 
-	constructor(
-		public program: ts.Program,
-		public context: ts.TransformationContext,
-		public config: TransformerConfig,
-	) {
-		this.factory = context.factory;
-	}
+  constructor(
+    public program: ts.Program,
+    public context: ts.TransformationContext,
+    public config: TransformerConfig
+  ) {
+    this.factory = context.factory;
+  }
 
-	/**
-	 * Transforms the children of the specified node.
-	 */
-	transform<T extends ts.Node>(node: T): T {
-		return ts.visitEachChild(node, (node) => visitNode(this, node), this.context);
-	}
+  /**
+   * Transforms the children of the specified node.
+   */
+  transform<T extends ts.Node>(node: T): T {
+    return ts.visitEachChild(
+      node,
+      (node) => visitNode(this, node),
+      this.context
+    );
+  }
 }
 
-
-function visitExpression(context: TransformContext, node: ts.Expression): ts.Expression {
-	// This can be used to transform expressions
-	// For example, a call expression for macros.
-
-	return context.transform(node);
+function visitImportDeclaration(
+  context: TransformContext,
+  node: ts.ImportDeclaration
+) {
+  if (context.yeagarName) return context.transform(node);
+  const importIdentifier = node.importClause?.name;
+  if (!importIdentifier) return context.transform(node);
+  const importName = importIdentifier.text;
+  const importPath = (node.moduleSpecifier as ts.StringLiteral).text;
+  if (importPath !== "@yeagar/core") return context.transform(node);
+  context.yeagarName = importName;
+  return context.transform(node);
 }
 
-function visitNode(context: TransformContext, node: ts.Node): ts.Node | ts.Node[] {
-	if (ts.isCallExpression(node)) {
-		return visitCallExpression(context, node);
-	} else if (ts.isExpression(node)) {
-		return visitExpression(context, node);
-	}
+function visitNode(
+  context: TransformContext,
+  node: ts.Node
+): ts.Node | ts.Node[] {
+  if (ts.isCallExpression(node)) {
+    return visitCallExpression(context, node);
+  } else if (ts.isImportDeclaration(node)) {
+    return visitImportDeclaration(context, node);
+  }
 
-	// We encountered a node that we don't handle above,
-	// but we should keep iterating the AST in case we find something we want to transform.
-	return context.transform(node);
+  // We encountered a node that we don't handle above,
+  // but we should keep iterating the AST in case we find something we want to transform.
+  return context.transform(node);
 }
 const commandLine = parseCommandLine();
 const rojoResolver = setupRojo();
