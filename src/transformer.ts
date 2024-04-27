@@ -80,7 +80,7 @@ function setupRojo() {
   return RojoResolver.fromPath(rojoConfig);
 }
 
-function visitCallExpression(node: ts.CallExpression) {
+function visitCallExpression(context: TransformContext, node: ts.CallExpression) {
   const expression = node.expression;
   if (
     ts.isPropertyAccessExpression(expression) &&
@@ -104,6 +104,8 @@ function visitCallExpression(node: ts.CallExpression) {
       updateArgument,
     ]);
   }
+
+  return context.transform(node);
 }
 
 /**
@@ -137,71 +139,6 @@ export class TransformContext {
 	}
 }
 
-function visitImportDeclaration(context: TransformContext, node: ts.ImportDeclaration) {
-	const { factory } = context;
-
-	const path = node.moduleSpecifier;
-	const clause = node.importClause;
-	if (!clause) return node;
-	if (!ts.isStringLiteral(path)) return node;
-	if (path.text !== "@rbxts/services") return node;
-
-	const namedBindings = clause.namedBindings;
-	if (!namedBindings) return node;
-	if (!ts.isNamedImports(namedBindings)) return node;
-
-	return [
-		// We replace the import declaration instead of stripping it to prevent
-		// issues with isolated modules.
-		factory.updateImportDeclaration(
-			node,
-			undefined,
-			factory.createImportClause(false, undefined, factory.createNamedImports([])),
-			node.moduleSpecifier,
-			undefined,
-		),
-
-		// Creates a multi-variable statement as shown below.
-		//
-		// const Players = game.GetService("Players"),
-		//		Workspace = game.GetService("Workspace");
-		factory.createVariableStatement(
-			undefined,
-			factory.createVariableDeclarationList(
-				namedBindings.elements.map((specifier) => {
-					const serviceName = specifier.propertyName ? specifier.propertyName.text : specifier.name.text;
-					const variableName = specifier.name;
-
-					return factory.createVariableDeclaration(
-						variableName,
-						undefined,
-						undefined,
-						factory.createCallExpression(
-							factory.createPropertyAccessExpression(factory.createIdentifier("game"), "GetService"),
-							undefined,
-							[factory.createStringLiteral(serviceName)],
-						),
-					);
-				}),
-				ts.NodeFlags.Const,
-			),
-		),
-	];
-}
-
-function visitStatement(context: TransformContext, node: ts.Statement): ts.Statement | ts.Statement[] {
-	// This is used to transform statements.
-	// TypeScript allows you to return multiple statements here.
-
-	if (ts.isImportDeclaration(node)) {
-		// We have encountered an import declaration,
-		// so we should transform it using a separate function.
-
-		return visitImportDeclaration(context, node);
-	}
-
-	return context.transform(node);
-}
 
 function visitExpression(context: TransformContext, node: ts.Expression): ts.Expression {
 	// This can be used to transform expressions
@@ -211,8 +148,8 @@ function visitExpression(context: TransformContext, node: ts.Expression): ts.Exp
 }
 
 function visitNode(context: TransformContext, node: ts.Node): ts.Node | ts.Node[] {
-	if (ts.isStatement(node)) {
-		return visitStatement(context, node);
+	if (ts.isCallExpression(node)) {
+		return visitCallExpression(context, node);
 	} else if (ts.isExpression(node)) {
 		return visitExpression(context, node);
 	}
