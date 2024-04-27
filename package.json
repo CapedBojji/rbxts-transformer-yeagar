@@ -1,6 +1,6 @@
 {
   "name": "rbxts-transformer-yeagar",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A transformer for yeagar",
   "main": "out/index.js",
   "scripts": {
