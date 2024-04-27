@@ -20,6 +20,9 @@
   "author": "CapedBojji",
   "license": "MIT",
   "devDependencies": {
+    "@roblox-ts/rojo-resolver": "^1.0.6",
+    "@types/node": "^20.12.7",
+    "fs-extra": "^11.2.0",
     "typescript": "^5.4.5"
   }
 }
