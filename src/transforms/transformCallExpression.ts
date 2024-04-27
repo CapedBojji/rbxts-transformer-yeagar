@@ -1,3 +1,6 @@
 import * as ts from 'typescript';
 
-type t = ts.CallExpression;
+
+function visitCallExpression(node: ts.CallExpression) {
+    
+}
