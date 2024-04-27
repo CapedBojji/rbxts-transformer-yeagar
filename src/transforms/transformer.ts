@@ -9,6 +9,29 @@ interface CommandLine {
   project: string;
 }
 
+
+function findAncestorDir(dirs: Array<string>) {
+	dirs = dirs.map(path.normalize).map((v) => (v.endsWith(path.sep) ? v : v + path.sep));
+	let currentDir = dirs[0];
+	while (!dirs.every((v) => v.startsWith(currentDir))) {
+		currentDir = path.join(currentDir, "..");
+	}
+	return currentDir;
+}
+
+function getRootDirs(compilerOptions: ts.CompilerOptions) {
+	const rootDirs = compilerOptions.rootDir ? [compilerOptions.rootDir] : compilerOptions.rootDirs;
+	if (!rootDirs) assert(false, "rootDir or rootDirs must be specified");
+
+	return rootDirs;
+}
+
+export function createPathTranslator(program: ts.Program) {
+	const compilerOptions = program.getCompilerOptions();
+	const rootDir = findAncestorDir([program.getCurrentDirectory(), ...getRootDirs(compilerOptions)]);
+	const outDir = compilerOptions.outDir!;
+}
+
 function findTsConfigPath(projectPath: string) {
   let tsConfigPath: string | undefined = path.resolve(projectPath);
   if (!fs.existsSync(tsConfigPath) || !fs.statSync(tsConfigPath).isFile()) {
@@ -58,7 +81,7 @@ function visitCallExpression(node: ts.CallExpression) {
     expression.expression.getText() === "Yeagar" &&
     expression.name.getText() === "addPath"
   ) {
-    
+
   }
 };
 
