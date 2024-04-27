@@ -87,15 +87,16 @@ function visitCallExpression(
   const expression = node.expression;
   if (
     ts.isPropertyAccessExpression(expression) &&
-    expression.expression.getText() === "Yeagar" &&
+    context.yeagarName.includes(expression.expression.getText()) &&
     expression.name.getText() === "addPath"
   ) {
     const p = (node.arguments[0] as ts.StringLiteral).text;
+    const expressionText = expression.expression.getText();
     // Replace src with out
     const updatedPath = p.replace("src", "out");
     const path = rojoResolver.getRbxPathFromFilePath(updatedPath);
     const updatedExpression = ts.factory.createPropertyAccessExpression(
-      ts.factory.createIdentifier("Yeagar"),
+      ts.factory.createIdentifier(expressionText),
       ts.factory.createIdentifier("_addPath")
     );
     if (!path) throw new Error("Unable to find path for file.");
@@ -126,7 +127,7 @@ export interface TransformerConfig {
  */
 export class TransformContext {
   public factory: ts.NodeFactory;
-  public yeagarName: string | undefined = undefined;
+  public yeagarName: string[] = [];
 
   constructor(
     public program: ts.Program,
@@ -152,13 +153,12 @@ function visitImportDeclaration(
   context: TransformContext,
   node: ts.ImportDeclaration
 ) {
-  if (context.yeagarName) return context.transform(node);
   const importIdentifier = node.importClause?.name;
   if (!importIdentifier) return context.transform(node);
   const importName = importIdentifier.text;
   const importPath = (node.moduleSpecifier as ts.StringLiteral).text;
   if (importPath !== "@yeagar/core") return context.transform(node);
-  context.yeagarName = importName;
+  context.yeagarName.push(importName);
   return context.transform(node);
 }
 
