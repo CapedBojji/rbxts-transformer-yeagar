@@ -1,4 +1,5 @@
-{  "name": "rbxts-transformer-yeagar",
+{
+  "name": "rbxts-transformer-yeagar",
   "version": "0.0.1",
   "description": "A transformer for yeagar",
   "main": "out/index.js",
@@ -22,7 +23,10 @@
     "@roblox-ts/rojo-resolver": "^1.0.6",
     "@types/node": "^20.12.7",
     "fs-extra": "^11.2.0",
-    "typescript": "^5.2.2",
-    "ts-expose-internals": "^5.2.2"
+    "ts-expose-internals": "^5.2.2",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "ts-creator": "^1.2.5"
   }
 }

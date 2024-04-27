@@ -3,33 +3,40 @@ import * as ts from "typescript";
 import { RojoResolver } from "@roblox-ts/rojo-resolver";
 import fs from "fs";
 import assert from "assert";
+import creator from "ts-creator";
 
 interface CommandLine {
   tsconfigPath: string;
   project: string;
 }
 
-
 function findAncestorDir(dirs: Array<string>) {
-	dirs = dirs.map(path.normalize).map((v) => (v.endsWith(path.sep) ? v : v + path.sep));
-	let currentDir = dirs[0];
-	while (!dirs.every((v) => v.startsWith(currentDir))) {
-		currentDir = path.join(currentDir, "..");
-	}
-	return currentDir;
+  dirs = dirs
+    .map(path.normalize)
+    .map((v) => (v.endsWith(path.sep) ? v : v + path.sep));
+  let currentDir = dirs[0];
+  while (!dirs.every((v) => v.startsWith(currentDir))) {
+    currentDir = path.join(currentDir, "..");
+  }
+  return currentDir;
 }
 
 function getRootDirs(compilerOptions: ts.CompilerOptions) {
-	const rootDirs = compilerOptions.rootDir ? [compilerOptions.rootDir] : compilerOptions.rootDirs;
-	if (!rootDirs) assert(false, "rootDir or rootDirs must be specified");
+  const rootDirs = compilerOptions.rootDir
+    ? [compilerOptions.rootDir]
+    : compilerOptions.rootDirs;
+  if (!rootDirs) assert(false, "rootDir or rootDirs must be specified");
 
-	return rootDirs;
+  return rootDirs;
 }
 
 export function createPathTranslator(program: ts.Program) {
-	const compilerOptions = program.getCompilerOptions();
-	const rootDir = findAncestorDir([program.getCurrentDirectory(), ...getRootDirs(compilerOptions)]);
-	const outDir = compilerOptions.outDir!;
+  const compilerOptions = program.getCompilerOptions();
+  const rootDir = findAncestorDir([
+    program.getCurrentDirectory(),
+    ...getRootDirs(compilerOptions),
+  ]);
+  const outDir = compilerOptions.outDir!;
 }
 
 function findTsConfigPath(projectPath: string) {
@@ -73,7 +80,6 @@ function setupRojo() {
   return RojoResolver.fromPath(rojoConfig);
 }
 
-
 function visitCallExpression(node: ts.CallExpression) {
   const expression = node.expression;
   if (
@@ -81,10 +87,24 @@ function visitCallExpression(node: ts.CallExpression) {
     expression.expression.getText() === "Yeagar" &&
     expression.name.getText() === "addPath"
   ) {
-
+    const path = rojoResolver.getRbxPathFromFilePath(
+      node.arguments[0].getText()
+    );
+    const updatedExpression = ts.factory.createPropertyAccessExpression(
+      ts.factory.createIdentifier("Yeagar"),
+      ts.factory.createIdentifier("_addPath")
+    );
+    if (!path) throw new Error("Unable to find path for file.");
+    const expressions = path?.map((v) => ts.factory.createStringLiteral(v));
+    const updateArgument = ts.factory.createArrayLiteralExpression(
+      expressions,
+      false
+    );
+    return ts.factory.createCallExpression(updatedExpression, undefined, [
+      updateArgument,
+    ]);
   }
-};
-
+}
 
 const commandLine = parseCommandLine();
 const rojoResolver = setupRojo();
