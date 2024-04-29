@@ -1,6 +1,5 @@
 import ts from "typescript";
 import { TransformContext, TransformerConfig } from "./transformer";
-import exp from "constants";
 
 /**
  * The transformer entry point.
