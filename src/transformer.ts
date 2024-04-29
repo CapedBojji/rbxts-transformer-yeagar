@@ -85,29 +85,24 @@ function visitCallExpression(
   node: ts.CallExpression
 ) {
   const expression = node.expression;
-  if (
-    ts.isPropertyAccessExpression(expression) &&
-    context.yeagarName.includes(expression.expression.getText()) &&
-    expression.name.getText() === "addPath"
-  ) {
-    const p = (node.arguments[0] as ts.StringLiteral).text;
-    const expressionText = expression.expression.getText();
-    // Replace src with out
-    const updatedPath = p.replace("src", "out");
-    const path = rojoResolver.getRbxPathFromFilePath(updatedPath);
-    const updatedExpression = ts.factory.createPropertyAccessExpression(
-      ts.factory.createIdentifier("Yeagar"),
-      ts.factory.createIdentifier("_addPath")
-    );
+  if (ts.isIdentifier(expression) && expression.text === context.pathName) {
+    const ags = node.arguments;
+    if (ags.length === 0) return context.transform(node);
+    if (ags.length > 1) {
+      throw new Error("Yeagar transformer only accepts one argument.");
+    }
+    if (!ts.isStringLiteral(ags[0])) {
+      throw new Error("Yeagar transformer only accepts string literals.");
+    }
+    const p = (ags[0] as ts.StringLiteral).text.replace("src", "out");
+    const path = rojoResolver.getRbxPathFromFilePath(p);
     if (!path) throw new Error("Unable to find path for file.");
     const expressions = path?.map((v) => ts.factory.createStringLiteral(v));
     const updateArgument = ts.factory.createArrayLiteralExpression(
       expressions,
       false
-    );
-    return ts.factory.createCallExpression(updatedExpression, undefined, [
-      updateArgument,
-    ]);
+    ); 
+    return updateArgument;
   }
 
   return context.transform(node);
@@ -127,7 +122,7 @@ export interface TransformerConfig {
  */
 export class TransformContext {
   public factory: ts.NodeFactory;
-  public yeagarName: string[] = [];
+  public pathName?: string;
 
   constructor(
     public program: ts.Program,
@@ -153,7 +148,23 @@ function visitImportDeclaration(
   context: TransformContext,
   node: ts.ImportDeclaration
 ) {
-  const importIdentifier = node.importClause?.namedBindings
+  const i = (node.moduleSpecifier as ts.StringLiteral).text;
+  if (i === importPath) {
+    const ic = node.importClause;
+    if (!ic) return context.transform(node);
+    const n = ic.namedBindings as ts.NamedImports;
+    if (!n) return context.transform(node); 
+    const elements = n.elements;
+    for (const e of elements) {
+      const name = e.name.text;
+      const prop = e.propertyName?.text;
+      if (prop && prop === "$print")
+        context.pathName = name;
+      else if (name === "$path" && !context.pathName) {
+        context.pathName = name;
+      }
+    }
+  }
   
   return context.transform(node);
 }

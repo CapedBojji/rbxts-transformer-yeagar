@@ -19,4 +19,4 @@ export default function(program: ts.Program, config: TransformerConfig) {
   };
 }
 
-export function $path(str: string) {}
+export function $path(str: string) : string[] {return []}
