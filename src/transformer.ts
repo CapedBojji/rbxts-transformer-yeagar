@@ -84,6 +84,31 @@ function visitCallExpression(
   context: TransformContext,
   node: ts.CallExpression
 ) {
+  const expression = node.expression;
+  if (
+    ts.isPropertyAccessExpression(expression) &&
+    context.yeagarName.includes(expression.expression.getText()) &&
+    expression.name.getText() === "addPath"
+  ) {
+    const p = (node.arguments[0] as ts.StringLiteral).text;
+    const expressionText = expression.expression.getText();
+    // Replace src with out
+    const updatedPath = p.replace("src", "out");
+    const path = rojoResolver.getRbxPathFromFilePath(updatedPath);
+    const updatedExpression = ts.factory.createPropertyAccessExpression(
+      ts.factory.createIdentifier("Yeagar"),
+      ts.factory.createIdentifier("_addPath")
+    );
+    if (!path) throw new Error("Unable to find path for file.");
+    const expressions = path?.map((v) => ts.factory.createStringLiteral(v));
+    const updateArgument = ts.factory.createArrayLiteralExpression(
+      expressions,
+      false
+    );
+    return ts.factory.createCallExpression(updatedExpression, undefined, [
+      updateArgument,
+    ]);
+  }
 
   return context.transform(node);
 }
@@ -102,6 +127,7 @@ export interface TransformerConfig {
  */
 export class TransformContext {
   public factory: ts.NodeFactory;
+  public yeagarName: string[] = [];
 
   constructor(
     public program: ts.Program,
@@ -123,17 +149,34 @@ export class TransformContext {
   }
 }
 
+function visitImportDeclaration(
+  context: TransformContext,
+  node: ts.ImportDeclaration
+) {
+  const importIdentifier = node.importClause?.name;
+  if (!importIdentifier) return context.transform(node);
+  const importName = importIdentifier.text;
+  const iP = (node.moduleSpecifier as ts.StringLiteral).text;
+  if (iP !== importPath) return context.transform(node);
+  context.yeagarName.push(importName);
+  return context.transform(node);
+}
+
 function visitNode(
   context: TransformContext,
   node: ts.Node
 ): ts.Node | ts.Node[] {
   if (ts.isCallExpression(node)) {
     return visitCallExpression(context, node);
+  } else if (ts.isImportDeclaration(node)) {
+    return visitImportDeclaration(context, node);
   }
 
   // We encountered a node that we don't handle above,
   // but we should keep iterating the AST in case we find something we want to transform.
   return context.transform(node);
 }
+
+const importPath = "rbxts-transformer-yeagar"
 const commandLine = parseCommandLine();
 const rojoResolver = setupRojo();
