@@ -153,12 +153,8 @@ function visitImportDeclaration(
   context: TransformContext,
   node: ts.ImportDeclaration
 ) {
-  const importIdentifier = node.importClause?.name;
-  if (!importIdentifier) return context.transform(node);
-  const importName = importIdentifier.text;
-  const iP = (node.moduleSpecifier as ts.StringLiteral).text;
-  if (iP !== importPath) return context.transform(node);
-  context.yeagarName.push(importName);
+  const importIdentifier = node.importClause?.namedBindings
+  
   return context.transform(node);
 }
 
